@@ -244,6 +244,122 @@ button:hover {
   color: #ccc;
 }
 
+/* Emotional Bars */
+.emotional-bars {
+  margin-top: 15px;
+  display: flex;
+  justify-content: center;
+  gap: 20px;
+}
+
+.emotional-bar {
+  width: 200px;
+  height: 20px;
+  background: #333;
+  border: 1px solid #555;
+  border-radius: 10px;
+  overflow: hidden;
+  position: relative;
+}
+
+.emotional-bar-fill {
+  height: 100%;
+  background: linear-gradient(90deg, #ff6b6b, #4ecdc4);
+  transition: width 0.5s;
+}
+
+.emotional-bar-label {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  text-align: center;
+  line-height: 20px;
+  font-size: 12px;
+  color: #fff;
+}
+
+/* Emojis */
+.emojis {
+  margin-top: 15px;
+  display: flex;
+  justify-content: center;
+  gap: 10px;
+}
+
+.emoji-btn {
+  font-size: 24px;
+  background: none;
+  border: none;
+  cursor: pointer;
+  transition: 0.2s;
+}
+
+.emoji-btn:hover {
+  transform: scale(1.2);
+}
+
+/* Power Cards */
+.power-cards {
+  margin-top: 15px;
+  display: flex;
+  justify-content: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.power-card {
+  background: #222;
+  border: 1px solid #555;
+  border-radius: 8px;
+  padding: 10px;
+  text-align: center;
+  cursor: pointer;
+  transition: 0.2s;
+}
+
+.power-card:hover {
+  background: #333;
+}
+
+.power-card.used {
+  opacity: 0.5;
+  pointer-events: none;
+}
+
+/* Interactions */
+.interactions {
+  margin-top: 15px;
+  max-height: 100px;
+  overflow-y: auto;
+  background: rgba(0,0,0,0.5);
+  border: 1px solid #555;
+  border-radius: 8px;
+  padding: 10px;
+  color: #fff;
+}
+
+.interaction {
+  margin: 5px 0;
+  font-size: 14px;
+}
+
+/* Reset Button */
+.reset-btn {
+  margin-top: 15px;
+  padding: 10px 20px;
+  background: #f44336;
+  color: #fff;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  display: none;
+}
+
+.reset-btn:hover {
+  background: #d32f2f;
+}
+
 #start-screen {
   position: fixed;
   inset: 0;
@@ -329,6 +445,37 @@ button:hover {
 
 <div id="status"></div>
 <div id="thinking" style="margin-top: 8px; color: #ffdd55; font-size: 14px; min-height: 20px;"></div>
+
+<div class="emotional-bars">
+  <div class="emotional-bar">
+    <div class="emotional-bar-fill" id="player-emotional-fill" style="width: 0%;"></div>
+    <div class="emotional-bar-label" id="player-emotional-label">Player: 0%</div>
+  </div>
+  <div class="emotional-bar">
+    <div class="emotional-bar-fill" id="milla-emotional-fill" style="width: 0%;"></div>
+    <div class="emotional-bar-label" id="milla-emotional-label">Milla: 0%</div>
+  </div>
+</div>
+
+<div class="emojis">
+  <button class="emoji-btn" onclick="sendEmoji('😊')">😊</button>
+  <button class="emoji-btn" onclick="sendEmoji('💕')">💕</button>
+  <button class="emoji-btn" onclick="sendEmoji('😘')">😘</button>
+  <button class="emoji-btn" onclick="sendEmoji('🥰')">🥰</button>
+  <button class="emoji-btn" onclick="sendEmoji('😏')">😏</button>
+  <button class="emoji-btn" onclick="sendEmoji('😢')">😢</button>
+  <button class="emoji-btn" onclick="sendEmoji('😰')">😰</button>
+  <button class="emoji-btn" onclick="sendEmoji('🤔')">🤔</button>
+  <button class="emoji-btn" onclick="sendEmoji('💪')">💪</button>
+  <button class="emoji-btn" onclick="sendEmoji('🎉')">🎉</button>
+</div>
+
+<div class="power-cards" id="power-cards"></div>
+
+<div class="interactions" id="interactions"></div>
+
+<button class="reset-btn" id="reset-btn" onclick="resetGame()">Reset Game</button>
+
 <div id="casas-info" style="margin-top: 10px; color:#aaa; font-size:13px; text-align:left; max-width:560px; margin-left:auto; margin-right:auto;">Carregando casas...</div>
 
 </div>
@@ -449,13 +596,20 @@ async function carregarCasas() {
 
 carregarCasas();
 
-function startGame() {
+async function startGame() {
+  // Garantir estado limpo no servidor antes de começar
+  await fetch("http://localhost:3000/reset", { method: "POST" });
+
   document.getElementById("start-screen").style.display = "none";
   document.getElementById("container").style.opacity = "1";
   setThinking("Jogo iniciado. Sua vez!");
   turnoAtual = "player";
   document.getElementById("status").innerHTML = "🟢 Game On! Faça seu movimento.";
-  refreshCasasData();
+
+  // Força exibir/reset botão de reinício
+  document.getElementById("reset-btn").style.display = "none";
+
+  await refreshCasasData();
 
   // atualizar frases candidatas a cada 30 segundos e no começo
   selecionarFrasesCandidatas();
@@ -564,27 +718,38 @@ async function vender() {
 }
 
 async function millaJogar() {
-  setThinking("Milla está pensando... 🤖");
-  let res = await fetch("http://localhost:3000/milla/jogar", { method: "POST" });
-  let data = await res.json();
+  try {
+    setThinking("Milla está pensando... 🤖");
+    let res = await fetch("http://localhost:3000/milla/jogar", { method: "POST" });
 
-  if (data.error) {
-    document.getElementById("status").innerHTML = "⚠️ " + data.error;
+    if (!res.ok) {
+      throw new Error(`Erro da IA: ${res.status} ${res.statusText}`);
+    }
+
+    let data = await res.json();
+
+    if (data.error) {
+      document.getElementById("status").innerHTML = "⚠️ " + data.error;
+      return;
+    }
+
+    turnoAtual = data.turno || "player";
+    atualizarUI(data);
+
+    if (Array.isArray(data.millaFalas)) {
+      await falarMillaPorAcoes(data.millaFalas);
+    } else {
+      let milla_texto = data.millaFala || data.millaMove?.fala || "Jogada concluída.";
+      await falarMillaSequencial(milla_texto);
+    }
+
+  } catch (err) {
+    console.error('millaJogar error', err);
+    document.getElementById("status").innerHTML = "⚠️ Erro Milla: " + err.message;
+  } finally {
     setThinking("");
-    return;
+    if (turnoAtual !== "player") turnoAtual = "player";
   }
-
-  turnoAtual = data.turno || "player";
-  atualizarUI(data);
-
-  if (Array.isArray(data.millaFalas)) {
-    await falarMillaPorAcoes(data.millaFalas);
-  } else {
-    let milla_texto = data.millaFala || data.millaMove?.fala || "Jogada concluída.";
-    await falarMillaSequencial(milla_texto);
-  }
-
-  setThinking("");
 }
 
 async function escreverLetraPorLetra(element, texto, speed = 20) {
@@ -758,6 +923,48 @@ function atualizarUI(data) {
   let falaParaMostrar = data.playerMove?.fala || data.millaFala || data.fala || "...";
   mostrarFala(falaParaMostrar);
 
+  // Update emotional bars
+  const emotionalBar = data.game.emotionalBar || 0;
+  document.getElementById("player-emotional-fill").style.width = `${emotionalBar}%`;
+  document.getElementById("player-emotional-label").textContent = `Player: ${emotionalBar}%`;
+
+  // Assuming milla emotional is separate, but for now use the same
+  document.getElementById("milla-emotional-fill").style.width = `${emotionalBar}%`;
+  document.getElementById("milla-emotional-label").textContent = `Milla: ${emotionalBar}%`;
+
+  // Update power cards
+  const powerCardsDiv = document.getElementById("power-cards");
+  powerCardsDiv.innerHTML = "";
+  if (data.game.poderesDisponiveis && data.game.poderesDisponiveis.length > 0) {
+    data.game.poderesDisponiveis.forEach(poder => {
+      const card = document.createElement("div");
+      card.className = "power-card";
+      card.textContent = poder.nome;
+      card.onclick = () => usarPoder(poder.nome);
+      powerCardsDiv.appendChild(card);
+    });
+  }
+
+  // Update interactions
+  const interactionsDiv = document.getElementById("interactions");
+  interactionsDiv.innerHTML = "";
+  if (data.game.affectiveMessages && data.game.affectiveMessages.length > 0) {
+    data.game.affectiveMessages.forEach(msg => {
+      const div = document.createElement("div");
+      div.className = "interaction";
+      div.textContent = `${msg.from === "player" ? "👤" : "🤖"} ${msg.emoji}`;
+      interactionsDiv.appendChild(div);
+    });
+  }
+
+  // Show reset button when game ended or player broke
+  const resetBtn = document.getElementById("reset-btn");
+  if (data.vencedor || playerMoney <= 0) {
+    resetBtn.style.display = "block";
+  } else {
+    resetBtn.style.display = "none";
+  }
+
   atualizarCasasInfo();
   refreshCasasData();
 }
@@ -770,6 +977,45 @@ function mostrarFala(texto) {
   if (!texto || !texto.toString().trim()) return;
   const displayTexto = `💬 ${texto}`;
   adicionarAoHistoricoMilla(displayTexto);
+  document.getElementById("status").innerHTML = displayTexto;
+}
+
+function usarPoder(poderNome) {
+  if (turnoAtual !== "player") {
+    alert("Não é sua vez!");
+    return;
+  }
+  fetch("http://localhost:3000/usar-poder", {
+    method: "POST",
+    headers: {"Content-Type":"application/json"},
+    body: JSON.stringify({ poder: poderNome })
+  }).then(res => res.json()).then(data => {
+    if (data.error) {
+      alert(data.error);
+      return;
+    }
+    turnoAtual = data.turno;
+    atualizarUI(data);
+  });
+}
+
+function sendEmoji(emoji) {
+  fetch("http://localhost:3000/enviar-emoji", {
+    method: "POST",
+    headers: {"Content-Type":"application/json"},
+    body: JSON.stringify({ emoji, from: "player" })
+  })
+  .then(res => res.json())
+  .then(data => {
+    if (data.error) {
+      console.error("Erro enviar emoji:", data.error);
+      return;
+    }
+    atualizarUI(data);
+  })
+  .catch(err => {
+    console.error("Falha na requisição de emoji:", err);
+  });
 }
 </script>
 
