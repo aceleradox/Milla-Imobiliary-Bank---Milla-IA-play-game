@@ -1,0 +1,777 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+<meta charset="UTF-8">
+<title>Milla Banco Imobiliário</title>
+
+<style>
+body {
+  margin: 0;
+  background: linear-gradient(135deg, #0a0a0a, #1a1a1a);
+  color: #fff;
+  font-family: Arial, sans-serif;
+}
+
+/* NAV Milla */
+#nav-milla {
+  position: fixed;
+  top: 12px;
+  right: 12px;
+  width: 340px;
+  max-width: 90%;
+  background: rgba(15,15,15,0.95);
+  border: 2px solid #19b319;
+  border-radius: 14px;
+  padding: 14px 16px;
+  box-shadow: 0 0 24px rgba(0, 0, 0, 0.85);
+  z-index: 12;
+}
+
+#nav-milla b {
+  display: block;
+  font-size: 20px;
+  color: #72ff9f;
+  margin-bottom: 8px;
+}
+
+#fala {
+  margin-top: 10px;
+  font-size: 16px;
+  line-height: 1.4;
+  color: #00ff88;
+  min-height: 120px;
+  max-height: 240px;
+  transition: all 0.25s;
+  text-shadow: 0 0 8px rgba(0, 255, 136, 0.35);
+  background: rgba(0,0,0,0.35);
+  border: 1px solid rgba(0,255,136,0.35);
+  border-radius: 8px;
+  padding: 8px;
+  overflow-y: auto;
+}
+
+#fala::-webkit-scrollbar {
+  width: 10px;
+}
+
+#fala::-webkit-scrollbar-track {
+  background: rgba(0,0,0,0.2);
+  border-radius: 10px;
+}
+
+#fala::-webkit-scrollbar-thumb {
+  background: rgba(0,255,136,0.55);
+  border-radius: 10px;
+}
+
+#fala::-webkit-scrollbar-thumb:hover {
+  background: rgba(0,255,136,0.8);
+}
+
+#ultima-fala {
+  margin-top: 8px;
+  font-size: 13px;
+  line-height: 1.3;
+  color: #aaaaaa;
+  background: rgba(0,0,0,0.28);
+  padding: 6px;
+  border-radius: 6px;
+  border: 1px solid rgba(255,255,255,0.12);
+  min-height: 34px;
+}
+
+
+/* Container */
+#container {
+  text-align: center;
+  margin-top: 90px;
+}
+
+/* Tabuleiro */
+#tabuleiro {
+  display: grid;
+  grid-template-columns: repeat(12, 72px);
+  grid-template-rows: repeat(10, 72px);
+  gap: 6px;
+  justify-content: center;
+  margin: 15px auto 10px;
+  width: min(100%, 900px);
+}
+
+/* Casas */
+.casa {
+  background: #161616;
+  border: 2px solid #272727;
+  color: #ddd;
+  font-size: 12px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 6px;
+  width: 72px;
+  height: 72px;
+  transition: 0.2s;
+  line-height: 1.1;
+  text-align: center;
+  border-radius: 8px;
+  position: relative;
+}
+
+.casa::before {
+  content: attr(data-id);
+  position: absolute;
+  top: 4px;
+  left: 4px;
+  font-size: 10px;
+  color: #aaa;
+}
+
+.casa .tipo {
+  font-size: 9px;
+  color: #aaa;
+  text-transform: uppercase;
+}
+
+.casa .preco {
+  font-weight: bold;
+  font-size: 11px;
+  margin-top: 2px;
+}
+
+.casa .dono {
+  margin-top: 3px;
+  font-size: 10px;
+}
+
+.casa .owner-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  position: absolute;
+  top: 6px;
+  right: 6px;
+  opacity: 0.95;
+}
+
+.casa .player-dot {
+  background: #2196f3;
+}
+
+.casa .milla-dot {
+  background: #f44336;
+}
+
+.casa:hover {
+  background: #2a2a2a;
+}
+
+.casa.owned {
+  border-color: #00ff88;
+  background: #163117;
+}
+
+.casa.milla-owned {
+  border-color: #ff6b6b;
+  background: #3e1212;
+}
+
+.casa.especial {
+  border-color: #f9c651;
+  box-shadow: 0 0 10px rgba(249, 198, 81, 0.7);
+}
+
+.casa.apartamento { background: #1d2a47; }
+.casa.loja { background: #2c2d4d; }
+.casa.empresa { background: #2e4c27; }
+.casa.banco { background: #243537; }
+.casa.hotel { background: #4a2f56; }
+.casa.parque { background: #163226; }
+.casa.estacao { background: #3d3a29; }
+.casa.industria { background: #3b2e2d; }
+
+/* Player */
+.player {
+  border: 2px solid #00ff88 !important;
+  box-shadow: 0 0 10px #00ff88;
+  animation: pulse 0.6s infinite alternate;
+}
+
+/* Player */
+.player {
+  background: #00ff88 !important;
+  box-shadow: 0 0 10px #00ff88;
+  animation: pulse 0.6s;
+}
+
+@keyframes pulse {
+  0% { transform: scale(0.8); }
+  100% { transform: scale(1); }
+}
+
+/* Botões */
+.controls {
+  margin-top: 15px;
+}
+
+input {
+  padding: 6px;
+  width: 80px;
+  border-radius: 6px;
+  border: none;
+  text-align: center;
+}
+
+button {
+  padding: 8px 12px;
+  margin: 5px;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  background: #00ff88;
+  color: #000;
+  font-weight: bold;
+  transition: 0.2s;
+}
+
+button:hover {
+  background: #00cc66;
+}
+
+/* Status */
+#status {
+  margin-top: 10px;
+  color: #ccc;
+}
+
+#start-screen {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.95);
+  z-index: 20;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-direction: column;
+  color: #fff;
+  font-size: 22px;
+}
+
+#start-screen button {
+  margin-top: 20px;
+  padding: 12px 20px;
+  border: 1px solid #00ff88;
+  background: #0a0;
+  color: #000;
+  border-radius: 10px;
+  cursor: pointer;
+  font-size: 18px;
+  font-weight: bold;
+  animation: pulse 1s ease-in-out infinite alternate;
+}
+
+#start-screen .title {
+  font-size: 36px;
+  margin-bottom: 12px;
+  animation: pop 0.8s ease-out both;
+}
+
+@keyframes pop {
+  0% { transform: scale(0.6); opacity: 0; }
+  100% { transform: scale(1); opacity: 1; }
+}
+</style>
+</head>
+
+<body>
+
+<!-- NAV Milla -->
+<div id="nav-milla">
+  <b>Milla</b>
+  <div id="fala">Oi querido 😏</div>
+  <div id="ultima-fala">Última fala: (nenhuma ainda)</div>
+</div>
+
+<div id="start-screen">
+  <div class="title">Milla Banco Imobiliário</div>
+  <div>Prepara-se! Clique em Play para iniciar</div>
+  <button onclick="startGame()">Play</button>
+</div>
+
+<!-- Jogo -->
+<div id="container" style="opacity:0.2;">
+
+<h1>Milla Banco Imobiliário</h1>
+
+<div id="tabuleiro"></div>
+
+<div class="controls">
+  <input type="number" id="passos" min="1" max="9" value="1">
+  <button onclick="jogar()">Andar</button>
+  <button onclick="comprar()">Comprar</button>
+  <button onclick="vender()">Vender</button>
+</div>
+
+<div id="fala-opcional" style="margin: 10px auto; max-width: 560px; text-align: left; font-size:13px; color:#ddd;">
+  <label><input type="checkbox" id="usarFrasesAleatorias" checked> Ativar frases aleatórias extras (opcional)</label>
+  <button onclick="gerarFalaAleatoria()" style="margin-left:8px;">Gerar fala agora</button>
+  <div style="margin-top:8px;">Clique em até 2 frases para marcar e gravar:</div>
+  <div id="frases-candidatas" style="margin-top:8px; display:flex; gap:8px;
+      flex-wrap:wrap;
+      background:rgba(255,255,255,0.04);
+      border:1px solid rgba(255,255,255,0.16);
+      padding:8px;
+      border-radius:6px;
+      min-height:50px;
+  "></div>
+  <div id="historico-falas" style="margin-top:8px; background:rgba(255,255,255,0.04); border:1px solid rgba(255,255,255,0.16); padding:8px; min-height:40px; border-radius:6px;">Histórico de frases adicionais</div>
+</div>
+
+<div id="status"></div>
+<div id="thinking" style="margin-top: 8px; color: #ffdd55; font-size: 14px; min-height: 20px;"></div>
+<div id="casas-info" style="margin-top: 10px; color:#aaa; font-size:13px; text-align:left; max-width:560px; margin-left:auto; margin-right:auto;">Carregando casas...</div>
+
+</div>
+
+<script>
+const tabuleiro = document.getElementById("tabuleiro");
+const casasInfo = document.getElementById("casas-info");
+const historicoFalas = document.getElementById("historico-falas");
+const frasesCandidatasRoot = document.getElementById("frases-candidatas");
+const ultimaFalaElement = document.getElementById("ultima-fala");
+
+let ultimaFalaGravada = "Nenhuma ainda.";
+
+const frasesAleatoriasBase = [
+  { frase: "Milla diz: observando seu estilo...", resposta: "Milla responde: já vejo uma abertura em seu padrão." },
+  { frase: "Milla diz: esse movimento tem potencial.", resposta: "Milla responde: vou bloquear esse caminho." },
+  { frase: "Milla diz: cuidado com essa rota.", resposta: "Milla responde: estou de olho nesse trecho." },
+  { frase: "Milla diz: vamos fazer essa rodada valer.", resposta: "Milla responde: ótima dinâmica." },
+  { frase: "Milla diz: sua estratégia está interessante.", resposta: "Milla responde: mas não é imbatível." },
+  { frase: "Milla diz: posso virar esse jogo.", resposta: "Milla responde: prepare-se para pressão." },
+  { frase: "Milla diz: imagine se eu comprasse isso...", resposta: "Milla responde: e eu realmente comprei." }
+];
+
+const frasesAleatorias = [];
+for (let i = 0; i < 220; i++) {
+  const template = frasesAleatoriasBase[i % frasesAleatoriasBase.length];
+  frasesAleatorias.push({
+    frase: `${template.frase} (variação ${i + 1})`, 
+    resposta: `${template.resposta} (resposta ${i + 1})`
+  });
+}
+
+let casasDados = [];
+let pos = 0;
+let turnoAtual = "player";
+let frasesSelecionadas = [];
+let milhaHistoricoFalas = []; // armazena histórico rolável de Milla
+let frasesCandidatasInterval = null;
+
+function setThinking(text) {
+  document.getElementById("thinking").innerHTML = text || "";
+}
+
+function adicionarAoHistoricoMilla(fala) {
+  if (!fala || !fala.trim()) return;
+
+  milhaHistoricoFalas.push(fala);
+  if (milhaHistoricoFalas.length > 100) milhaHistoricoFalas.shift();
+
+  const container = document.getElementById("fala");
+  container.innerHTML = milhaHistoricoFalas
+    .map(line => `<div style="margin: 3px 0;">${line}</div>`)
+    .join("");
+  container.scrollTop = container.scrollHeight;
+
+  ultimaFalaGravada = fala;
+  ultimaFalaElement.innerHTML = `Última fala: ${ultimaFalaGravada}`;
+}
+
+
+function aguardar(ms) {
+  return new Promise(resolve => setTimeout(resolve, ms));
+}
+
+/* =========================
+   🗺️ CRIAR TABULEIRO
+========================= */
+
+function montarTabuleiro() {
+  tabuleiro.innerHTML = "";
+
+  for (let i = 0; i < casasDados.length; i++) {
+    let casa = casasDados[i];
+    let div = document.createElement("div");
+    div.className = "casa";
+    if (casa.dono === "player") div.classList.add("owned");
+    if (casa.dono === "milla") div.classList.add("milla-owned");
+    if (casa.tipo === "especial") div.classList.add("especial");
+    div.dataset.id = i;
+
+    let nome = casa.nome || `Casa #${i}`;
+    div.classList.add(casa.tipo);
+
+    div.innerHTML = `
+      <div class="owner-dot ${casa.dono === 'player' ? 'player-dot' : casa.dono === 'milla' ? 'milla-dot' : ''}"></div>
+      <div class="tipo">${casa.tipo.toUpperCase()}</div>
+      <div class="preco">R$${casa.preco}</div>
+      <div class="dono">${casa.dono ? (casa.dono === 'player' ? 'Você' : 'Milla') : 'Livre'}</div>
+    `;
+
+    div.title = `Casa #${i}\nNome: ${nome}\nTipo: ${casa.tipo}\nPreço: R$${casa.preco}\nDono: ${casa.dono || 'livre'}`;
+
+    tabuleiro.appendChild(div);
+  }
+}
+
+function atualizarCasasInfo() {
+  if (!casasDados.length) return;
+  let playerProps = casasDados.filter(c => c.dono === "player");
+  let millaProps = casasDados.filter(c => c.dono === "milla");
+  let livres = casasDados.filter(c => !c.dono);
+
+  casasInfo.innerHTML = `Player: ${playerProps.length} | Milla: ${millaProps.length} | Livres: ${livres.length} | Última posição: ${pos}`;
+
+  let labels = [];
+  if (playerProps.length) labels.push(`🟢 Player: ${playerProps.slice(0, 8).map(c => c.nome).join(" • ")}`);
+  if (millaProps.length) labels.push(`🤖 Milla: ${millaProps.slice(0, 8).map(c => c.nome).join(" • ")}`);
+  if (labels.length) casasInfo.innerHTML += `<br>${labels.join("<br>")}`;
+}
+
+async function carregarCasas() {
+  let res = await fetch("http://localhost:3000/casas");
+  casasDados = await res.json();
+  montarTabuleiro();
+  atualizarPlayer(pos);
+  atualizarCasasInfo();
+}
+
+carregarCasas();
+
+function startGame() {
+  document.getElementById("start-screen").style.display = "none";
+  document.getElementById("container").style.opacity = "1";
+  setThinking("Jogo iniciado. Sua vez!");
+  turnoAtual = "player";
+  document.getElementById("status").innerHTML = "🟢 Game On! Faça seu movimento.";
+  refreshCasasData();
+
+  // atualizar frases candidatas a cada 30 segundos e no começo
+  selecionarFrasesCandidatas();
+  if (frasesCandidatasInterval) clearInterval(frasesCandidatasInterval);
+  frasesCandidatasInterval = setInterval(selecionarFrasesCandidatas, 30000);
+}
+
+/* =========================
+   🎮 PLAYER
+========================= */
+
+function atualizarPlayer(novaPos) {
+  document.querySelectorAll(".casa").forEach(c => c.classList.remove("player"));
+  let index = novaPos % casasDados.length;
+  if (tabuleiro.children[index]) {
+    tabuleiro.children[index].classList.add("player");
+  }
+}
+
+/* =========================
+   📡 API CALLS
+========================= */
+
+async function jogar() {
+  if (turnoAtual !== "player") {
+    document.getElementById("status").innerHTML = "⏳ Aguarde: é vez da Milla.";
+    return;
+  }
+
+  let passos = parseInt(document.getElementById("passos").value);
+
+  let res = await fetch("http://localhost:3000/jogar", {
+    method: "POST",
+    headers: {"Content-Type":"application/json"},
+    body: JSON.stringify({ passos })
+  });
+
+
+  let data = await res.json();
+
+  if (data.error) {
+    document.getElementById("status").innerHTML = "⚠️ " + data.error;
+    return;
+  }
+
+  turnoAtual = data.turno || "milla";
+  atualizarUI(data);
+
+  // atualiza status do player sem expressar como fala da Milla
+  let playerFala = data.playerMove?.fala || "Jogada do player efetuada.";
+  document.getElementById("status").innerHTML = `👤 Player: ${playerFala}`;
+
+  setThinking("Milla está pensando...");
+  selecionarFrasesCandidatas();
+
+  let frasesPensando = frasesSelecionadas.length ? frasesSelecionadas : [...frasesAleatorias].sort(() => Math.random() - 0.5).slice(0, 2);
+  await falarMillaPensando(frasesPensando);
+
+  if (document.getElementById("usarFrasesAleatorias").checked) {
+    gerarFalaAleatoria();
+  }
+
+  await millaJogar();
+}
+
+async function comprar() {
+  if (turnoAtual !== "player") {
+    document.getElementById("status").innerHTML = "⏳ Aguarde: é vez da Milla.";
+    return;
+  }
+
+  let res = await fetch("http://localhost:3000/comprar", { method: "POST" });
+  let data = await res.json();
+  if (data.error) {
+    document.getElementById("status").innerHTML = "⚠️ " + data.error;
+    return;
+  }
+
+  turnoAtual = data.turno || "milla";
+  setThinking("Milla está digitando...");
+  atualizarUI(data);
+
+  await aguardar((Math.floor(Math.random() * 2) + 1) * 1000);
+  await millaJogar();
+}
+
+async function vender() {
+  if (turnoAtual !== "player") {
+    document.getElementById("status").innerHTML = "⏳ Aguarde: é vez da Milla.";
+    return;
+  }
+
+  let res = await fetch("http://localhost:3000/vender", { method: "POST" });
+  let data = await res.json();
+  if (data.error) {
+    document.getElementById("status").innerHTML = "⚠️ " + data.error;
+    return;
+  }
+
+  turnoAtual = data.turno || "milla";
+  setThinking("Milla está digitando...");
+  atualizarUI(data);
+
+  await aguardar((Math.floor(Math.random() * 2) + 1) * 1000);
+  await millaJogar();
+}
+
+async function millaJogar() {
+  setThinking("Milla está pensando... 🤖");
+  let res = await fetch("http://localhost:3000/milla/jogar", { method: "POST" });
+  let data = await res.json();
+
+  if (data.error) {
+    document.getElementById("status").innerHTML = "⚠️ " + data.error;
+    setThinking("");
+    return;
+  }
+
+  turnoAtual = data.turno || "player";
+  atualizarUI(data);
+
+  if (Array.isArray(data.millaFalas)) {
+    await falarMillaPorAcoes(data.millaFalas);
+  } else {
+    let milla_texto = data.millaFala || data.millaMove?.fala || "Jogada concluída.";
+    await falarMillaSequencial(milla_texto);
+  }
+
+  setThinking("");
+}
+
+async function escreverLetraPorLetra(element, texto, speed = 20) {
+  element.innerHTML = "";
+  for (let i = 0; i < texto.length; i++) {
+    element.innerHTML += texto[i];
+    await aguardar(speed);
+  }
+}
+
+function combinarFrase(r) {
+  const ajudas = [
+    "estou avaliando riscos",
+    "a probabilidade está alta",
+    "a margem é forte",
+    "o fluxo está estável",
+    "a tendência é favorável",
+    "preciso observar o próximo salto"
+  ];
+
+  const partes = r.split(" ").filter(Boolean);
+  const aleatorio = ajudas[Math.floor(Math.random() * ajudas.length)];
+  if (partes.length < 4) {
+    return `Milla diz: ${aleatorio}.`;
+  }
+
+  const meio = partes.slice(0, Math.min(3, partes.length)).join(" ");
+  return `Milla diz: ${meio}... ${aleatorio}.`;
+}
+
+async function falarMillaPensando(falas) {
+  const container = document.getElementById("fala");
+
+  const frases = falas
+    .map(f => typeof f === "string" ? f : (f?.frase || ""))
+    .filter(f => f && f.trim())
+    .slice(0, 3); // usa 2-3 frases
+
+  for (let i = 0; i < frases.length; i++) {
+    let raw = frases[i];
+    let frase = combinarFrase(raw);
+    let textoExib = `🤖 Milla (pensando): ${frase}`;
+
+    setThinking(`Milla está falando ${i + 1}/${frases.length}...`);
+    await escreverLetraPorLetra(container, textoExib, 30);
+
+    adicionarAoHistoricoMilla(textoExib);
+
+    let wait = Math.floor(Math.random() * 3) + 2;
+    await aguardar(wait * 1000);
+  }
+
+  setThinking("");
+}
+
+async function falarMillaPorAcoes(falas) {
+  const container = document.getElementById("fala");
+  const frases = falas.filter(f => f && f.trim()).slice(0, 3); // usa 2-3 frases
+
+  for (let i = 0; i < frases.length; i++) {
+    let raw = frases[i];
+    let frase = combinarFrase(raw);
+    let textoExib = `🤖 Milla: ${frase}`;
+
+    setThinking(`Milla está digitando ${i + 1}/${frases.length}...`);
+    await escreverLetraPorLetra(container, textoExib, 30);
+
+    adicionarAoHistoricoMilla(textoExib);
+
+    let wait = Math.floor(Math.random() * 3) + 2;
+    await aguardar(wait * 1000);
+  }
+
+  setThinking("");
+}
+
+async function falarMillaSequencial(texto) {
+  const fraseContainer = document.getElementById("status");
+  const frases = texto.split("\u000b").map(f => f.trim()).filter(Boolean);
+
+  for (let i = 0; i < frases.length; i++) {
+    fraseContainer.innerHTML = `🤖 Milla: ${frases[i]}`;
+    await aguardar(800 + Math.floor(Math.random() * 400));
+  }
+
+  // Exibe tudo junto no final
+  if (frases.length > 1) {
+    fraseContainer.innerHTML = `🤖 Milla: ${frases.join(" <br> ")}`;
+  }
+}
+
+function selecionarFrasesCandidatas() {
+  frasesSelecionadas = [];
+  frasesCandidatasRoot.innerHTML = "";
+  const copy = [...frasesAleatorias].sort(() => Math.random() - 0.5).slice(0, 4);
+  const items = copy.slice(0, 2);
+
+  items.forEach(item => {
+    const btn = document.createElement("button");
+    btn.textContent = item.frase;
+    btn.style.margin = "2px";
+    btn.style.fontSize = "12px";
+    btn.onclick = async () => {
+      btn.classList.toggle("selected");
+      if (btn.classList.contains("selected")) {
+        if (frasesSelecionadas.length < 2) {
+          frasesSelecionadas.push(item);
+          historicoFalas.innerHTML += `<div style="margin-bottom: 2px;">✅ ${item.frase}</div>`;
+
+          // Resposta da Milla vinculada a cada frase clicada
+          await aguardar(400);
+          adicionarAoHistoricoMilla(`🤖 Milla responde: ${item.resposta}`);
+        } else {
+          btn.classList.remove("selected");
+          alert("Você só pode marcar até 2 frases.");
+        }
+      } else {
+        frasesSelecionadas = frasesSelecionadas.filter(f => f !== item);
+      }
+    };
+    frasesCandidatasRoot.appendChild(btn);
+  });
+}
+
+function gerarFalaAleatoria() {
+  const idx = Math.floor(Math.random() * frasesAleatorias.length);
+  const item = frasesAleatorias[idx];
+  historicoFalas.innerHTML += `<div style="margin-bottom: 4px;">${item.frase}</div>`;
+  historicoFalas.scrollTop = historicoFalas.scrollHeight;
+
+  // possível resposta imediata da Milla
+  setTimeout(() => adicionarAoHistoricoMilla(`🤖 Milla responde: ${item.resposta}`), 350);
+}
+
+
+/* =========================
+   🔄 UI UPDATE
+========================= */
+
+async function refreshCasasData() {
+  let res = await fetch("http://localhost:3000/casas");
+  casasDados = await res.json();
+  montarTabuleiro();
+  atualizarPlayer(pos);
+  atualizarCasasInfo();
+}
+
+function atualizarUI(data) {
+  pos = data.game.pos;
+
+  atualizarPlayer(pos);
+
+  const playerMoney = data.game.playerDinheiro != null ? data.game.playerDinheiro : 0;
+  const millaMoney = data.game.millaDinheiro != null ? data.game.millaDinheiro : 0;
+  let statusTexto = `💰 Player: R$${playerMoney} | 🤖 Milla: R$${millaMoney} | 📍 Posição: ${pos} | 🎯 Vez: ${turnoAtual}`;
+
+  if (data.vencedor) {
+    statusTexto += `<br>🏆 Vencedor: ${data.vencedor.toUpperCase()}`;
+  }
+
+  let falaPrincipal = data.fala || data.playerMove?.fala || data.millaMove?.fala || "Pronto para jogar";
+  statusTexto += `<br>💬 ${falaPrincipal}`;
+
+  if (data.playerMove) {
+    statusTexto += `<br>👤 Player: ${data.playerMove.fala}`;
+  }
+
+  // Exclui MillaMove e MillaFala de status principal para manter a fala em etapas controladas
+  document.getElementById("status").innerHTML = statusTexto;
+
+  let falaParaMostrar = data.playerMove?.fala || data.millaFala || data.fala || "...";
+  mostrarFala(falaParaMostrar);
+
+  atualizarCasasInfo();
+  refreshCasasData();
+}
+
+/* =========================
+   🧠 Milla fala
+========================= */
+
+function mostrarFala(texto) {
+  if (!texto || !texto.toString().trim()) return;
+  const displayTexto = `💬 ${texto}`;
+  adicionarAoHistoricoMilla(displayTexto);
+}
+</script>
+
+</body>
+</html>
