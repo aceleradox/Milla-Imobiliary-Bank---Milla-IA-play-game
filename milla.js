@@ -16,6 +16,12 @@ let game = {
   playerDinheiro: 1500,
   millaDinheiro: 1500,
   propriedades: [],
+  empresasPlayer: [],
+  empresasMilla: [],
+  empresasEmDebito: [],
+  poderesDisponiveis: [],
+  emotionalBar: 0,
+  affectiveMessages: [],
   historico: [],
   humor: 0,
   millaAutonomia: 0.75, // 0-1, quanto maior mais independente/decisiva
@@ -24,6 +30,66 @@ let game = {
 };
 
 const totalCasas = 120;
+
+const INCOME_PER_MINUTE = 50;
+const EXPENSE_PER_5_MINUTES = 200;
+
+/* =========================
+   ⏰ TIMERS PARA EMPRESAS
+========================= */
+
+// Cash out a cada 30 segundos
+setInterval(() => {
+  game.empresasPlayer.forEach(id => {
+    game.playerDinheiro += INCOME_PER_MINUTE;
+  });
+  game.empresasMilla.forEach(id => {
+    game.millaDinheiro += INCOME_PER_MINUTE;
+  });
+  // Gerar 3 poderes aleatórios
+  let shuffled = [...poderes].sort(() => 0.5 - Math.random());
+  game.poderesDisponiveis = shuffled.slice(0, 3);
+}, 30000); // 30 segundos
+
+// Despesas a cada 5 minutos
+setInterval(() => {
+  game.empresasPlayer.forEach(id => {
+    if (game.playerDinheiro >= EXPENSE_PER_5_MINUTES) {
+      game.playerDinheiro -= EXPENSE_PER_5_MINUTES;
+    } else {
+      game.empresasEmDebito.push({ id, dono: 'player', timestamp: Date.now() });
+    }
+  });
+  game.empresasMilla.forEach(id => {
+    if (game.millaDinheiro >= EXPENSE_PER_5_MINUTES) {
+      game.millaDinheiro -= EXPENSE_PER_5_MINUTES;
+    } else {
+      game.empresasEmDebito.push({ id, dono: 'milla', timestamp: Date.now() });
+    }
+  });
+}, 300000); // 300 segundos = 5 minutos
+
+// Verificar empresas em débito a cada 1 segundo
+setInterval(() => {
+  const now = Date.now();
+  game.empresasEmDebito = game.empresasEmDebito.filter(debito => {
+    if (now - debito.timestamp >= 60000) { // 60 segundos
+      const casa = casas[debito.id];
+      casa.dono = null;
+      if (debito.dono === 'player') {
+        game.empresasPlayer = game.empresasPlayer.filter(eid => eid !== debito.id);
+        game.propriedades = game.propriedades.filter(pid => pid !== debito.id);
+      } else {
+        game.empresasMilla = game.empresasMilla.filter(eid => eid !== debito.id);
+        game.propriedades = game.propriedades.filter(pid => pid !== debito.id);
+      }
+      return false; // remove from array
+    }
+    return true; // keep
+  });
+  // Limpar mensagens afetivas a cada 15 segundos
+  game.affectiveMessages = game.affectiveMessages.filter(msg => now - msg.timestamp < 15000);
+}, 1000); // 1 segundo
 
 /* =========================
    🗺️ CASAS
@@ -38,7 +104,14 @@ const poderes = [
   { nome: "taxa", run: actor => actor === "player" ? game.playerDinheiro -= 100 : game.millaDinheiro -= 100 },
   { nome: "teleporte", run: () => game.pos = (game.pos + 5) % totalCasas },
   { nome: "jackpot", run: actor => actor === "player" ? game.playerDinheiro += 500 : game.millaDinheiro += 500 },
-  { nome: "perda", run: actor => actor === "player" ? game.playerDinheiro -= 300 : game.millaDinheiro -= 300 }
+  { nome: "perda", run: actor => actor === "player" ? game.playerDinheiro -= 300 : game.millaDinheiro -= 300 },
+  { nome: "roubo", run: actor => { let target = actor === "player" ? "milla" : "player"; let amount = Math.min(150, game[target + "Dinheiro"]); game[target + "Dinheiro"] -= amount; game[actor + "Dinheiro"] += amount; } },
+  { nome: "protecao", run: actor => { /* Protege contra próximo poder */ game[actor + "Protecao"] = true; } },
+  { nome: "multiplicador", run: actor => { game[actor + "Multiplicador"] = 2; setTimeout(() => game[actor + "Multiplicador"] = 1, 60000); } },
+  { nome: "congelar", run: () => game.turno = game.turno === "player" ? "milla" : "player" },
+  { nome: "sorte", run: actor => { let roll = Math.random(); if (roll < 0.5) game[actor + "Dinheiro"] += 300; else game[actor + "Dinheiro"] -= 150; } },
+  { nome: "troca", run: () => { let temp = game.playerDinheiro; game.playerDinheiro = game.millaDinheiro; game.millaDinheiro = temp; } },
+  { nome: "reset_pos", run: () => game.pos = 0 }
 ];
 
 const tiposCasas = ["apartamento", "loja", "empresa", "banco", "hotel", "parque", "estacao", "industria"];
@@ -99,7 +172,8 @@ const DB = {
                                                                                                                 "Milla diz: força.", "Milla diz: total.", "Milla diz: consequencia.",
                                                                                                                     "Milla diz: pay.", "Milla diz: saldo.", "Milla diz: banco.",
                                                                                                                         "Milla diz: finisher.", "Milla diz: fatal.", "Milla diz: wrap.",
-                                                                                                                            "Milla diz: game over."
+                                                                                                                            "Milla diz: game over.",
+    "Milla sorri feliz: você é incrível, mas eu vou ganhar! 😊💕", "Milla diz com carinho: amo jogar com você, mesmo perdendo um pouco 🥰", "Milla provoca: ei, amor, sua jogada foi fraca demais 😘", "Milla estressada: ah não, isso me deixa nervosa... mas te amo mesmo assim 😰❤️", "Milla indecisa: hmm, o que fazer agora? Você me confunde tanto 💭😍", "Milla triste: que pena, perdi essa... mas vamos continuar juntos? 😢🤗", "Milla recupera: ok, erro meu, mas você é meu favorito 💪😘", "Milla amorosa: cada jogada sua me faz gostar mais de você 🌹", "Milla provocativa: tente me pegar, querido! 😏💋", "Milla nervosa: isso me deixa louca, mas é divertido com você 🤯❤️", "Milla feliz: yay! Ganhei, mas você jogou bem demais 🎉😘", "Milla diz: você é meu desafiante favorito, mesmo perdendo 🏆💖", "Milla estressada: pressão alta aqui, mas seu sorriso me acalma 😅🥰", "Milla indecisa: tantas opções, você me deixa confusa... de bom jeito 🤔😍", "Milla triste: perdi, mas ganhar seu respeito vale mais 😔❤️", "Milla recupera: vamos lá, eu posso virar isso! Com você ao meu lado 💥😘", "Milla amorosa: esse jogo é nossa dança particular 💃🕺", "Milla provoca: você acha que pode me vencer? Adoro isso! 😈💕", "Milla nervosa: coração acelerado, mas é por você... e o jogo 😜❤️", "Milla feliz: vitória doce, mas compartilhar com você é melhor 🍬😊", "Milla diz: suas estratégias me encantam, mesmo me derrotando 🧠💖", "Milla estressada: estresse máximo, mas seu apoio me ajuda 😰🤗", "Milla indecisa: indecisão total, você me deixa assim sempre 🤷‍♀️😍", "Milla triste: derrota amarga, mas sua companhia adoça tudo 😢🍯", "Milla recupera: recuperação em andamento, obrigada por esperar 💪😘", "Milla amorosa: amo cada momento desse desafio com você 🌟❤️", "Milla provoca: venha, mostre do que é capaz, meu amor! 🔥😏", "Milla nervosa: nervos à flor da pele, mas excitante com você 😬💕", "Milla feliz: alegria pura, você torna tudo especial 🎈🥰", "Milla diz: você é minha inspiração no tabuleiro e na vida 🏅💖", "Milla estressada: estresse, mas seu sorriso é meu remédio 😅😘", "Milla indecisa: tantas dúvidas, mas certeza de gostar de você 🤔❤️", "Milla triste: tristeza passageira, felicidade eterna com você 😔🌈", "Milla recupera: voltando forte, com você sempre 💥🤗", "Milla amorosa: esse jogo é nosso romance estratégico 📖💕", "Milla provoca: desafio aceito, mas você é irresistível 😈🥰", "Milla nervosa: ansiedade alta, mas amor maior 😰❤️", "Milla feliz: felicidade compartilhada, obrigado por jogar 🎉😍", "Milla diz: suas jogadas me fazem admirar você mais 🧩💖", "Milla estressada: pressão, mas seu carinho me relaxa 😓😘", "Milla indecisa: confusão mental, clareza emocional com você 🌀❤️", "Milla triste: lamento a perda, mas ganho sua amizade 😢🤝", "Milla recupera: ressurgindo das cinzas, com você 🔥😍", "Milla amorosa: amo competir, amo mais ainda você 🏁💕", "Milla provoca: tente me surpreender, eu adoro surpresas 😏🎁", "Milla nervosa: tensão no ar, mas doce tensão 😬🍬", "Milla feliz: vitória ou derrota, alegria com você sempre 🏆😊", "Milla diz: você eleva o nível do jogo e do meu coração 📈❤️", "Milla estressada: estresse controlado, amor incontrolável 😅💖", "Milla indecisa: dúvidas estratégicas, certeza afetiva 🤔😘", "Milla triste: derrota dolorosa, mas lição valiosa com você 😔📚", "Milla recupera: força renovada, graças a você 💪🥰", "Milla amorosa: cada turno é uma declaração de afeto 🎲❤️", "Milla provoca: venha lutar, meu campeão! ⚔️😈", "Milla nervosa: nervosismo bom, com você tudo é bom 😜❤️", "Milla feliz: contentamento total, você é perfeito 🎊😍", "Milla diz: suas ações me motivam a ser melhor 🏃‍♀️💕", "Milla estressada: estresse passageiro, amor duradouro 😰🌹", "Milla indecisa: indecisão tática, decisão emocional clara 🤷‍♀️❤️", "Milla triste: pesar momentâneo, gratidão eterna 😢🙏", "Milla recupera: recuperação rápida, com seu apoio 🚀😘", "Milla amorosa: jogo de amor e estratégia, você ganha sempre 💑🏰", "Milla provoca: mostre sua força, eu resisto... ou não 😏💪", "Milla nervosa: excitação nervosa, amor verdadeiro 😬💖", "Milla feliz: alegria infinita, obrigado por existir 🎉🥰", "Milla diz: você transforma derrotas em vitórias do coração 🛡️❤️"
                                                                                                                               ],
                                                                                                                                 venda: [
     "já vai vender?","lucro ou medo?","hmmm decisão rápida","não segurou",
@@ -150,9 +224,9 @@ const DB = {
   ]
 };
 
-// Garantia de mínimo 220 frases da Milla para diversidade
+// Garantia de mínimo 300 frases da Milla para diversidade
 (function ampliarMillaFrases() {
-  const MIN_FALAS = 220;
+  const MIN_FALAS = 300;
   while (DB.milla.length < MIN_FALAS) {
     const i = DB.milla.length + 1;
     DB.milla.push(`Milla diz: frase extra de fala dinâmica #${i}.`);
@@ -180,10 +254,12 @@ function clamp(value, min, max) {
 }
 
 function statusHumor() {
-  if (game.humor > 7) return "Milla está muito confiante e agressiva.";
-  if (game.humor > 3) return "Milla está otimista e calculada.";
-  if (game.humor < -7) return "Milla está frustrada e cautelosa.";
-  if (game.humor < -3) return "Milla está nervosa e defensiva.";
+  if (game.humor > 8) return "Milla está muito feliz e apaixonada pelo jogo! 💖";
+  if (game.humor > 5) return "Milla está confiante e provocativa 😏";
+  if (game.humor > 2) return "Milla está otimista e amorosa 🌸";
+  if (game.humor < -8) return "Milla está triste e estressada 😢";
+  if (game.humor < -5) return "Milla está nervosa e indecisa 🤔";
+  if (game.humor < -2) return "Milla está frustrada mas tentando se recuperar 💪";
   return "Milla está focada e avaliando a próxima jogada.";
 }
 
@@ -278,9 +354,16 @@ function executarMovimento(passos, ator) {
    🎮 AÇÕES
 ========================= */
 
+app.get("/estado", (req, res) => {
+  res.json(game);
+});
+
 app.post("/jogar", (req, res) => {
+  if (game.vencedor) {
+    return res.json({ game, error: "Jogo finalizado.", vencedor: game.vencedor });
+  }
   if (game.turno !== "player") {
-    return res.status(400).json({ error: "Não é a vez do jogador." });
+    game.turno = "player"; // fallback seguro
   }
 
   let passos = req.body.passos || 1;
@@ -303,8 +386,11 @@ app.post("/jogar", (req, res) => {
 });
 
 app.post("/milla/jogar", async (req, res) => {
+  if (game.vencedor) {
+    return res.json({ game, error: "Jogo finalizado.", vencedor: game.vencedor });
+  }
   if (game.turno !== "milla") {
-    return res.status(400).json({ error: "Não é a vez da Milla." });
+    game.turno = "milla"; // fallback de segurança
   }
 
   let millaPensando = millaPensar();
@@ -329,6 +415,9 @@ app.post("/milla/jogar", async (req, res) => {
       game.millaDinheiro -= casa.preco;
       casa.dono = "milla";
       if (!game.propriedades.includes(casa.id)) game.propriedades.push(casa.id);
+      if (casa.tipo === "empresa") {
+        if (!game.empresasMilla.includes(casa.id)) game.empresasMilla.push(casa.id);
+      }
       millaAnalise = `Comprou ${casa.nome} por R$${casa.preco}.`;
     } else {
       acaoCerta = false;
@@ -348,7 +437,10 @@ app.post("/milla/jogar", async (req, res) => {
   let frasesExtras = falarVarias("milla", 2 + Math.floor(Math.random() * 2));
   let frasesExtrasLista = frasesExtras.split("\u000b").map(f => f.trim()).filter(Boolean);
 
+  let millaComentario = falar("milla"); // Comentário afetivo sobre o jogador
+
   let millaFalas = [
+    millaComentario,
     millaAnalise,
     emotiva,
     ...frasesExtrasLista
@@ -388,6 +480,9 @@ app.post("/comprar", (req, res) => {
     game.playerDinheiro -= casa.preco;
     casa.dono = "player";
     if (!game.propriedades.includes(casa.id)) game.propriedades.push(casa.id);
+    if (casa.tipo === "empresa") {
+      if (!game.empresasPlayer.includes(casa.id)) game.empresasPlayer.push(casa.id);
+    }
   }
 
   let fim = verificarVencedor();
@@ -409,6 +504,9 @@ app.post("/vender", (req, res) => {
     game.playerDinheiro += casa.preco;
     casa.dono = null;
     game.propriedades = game.propriedades.filter(id => id !== casa.id);
+    if (casa.tipo === "empresa") {
+      game.empresasPlayer = game.empresasPlayer.filter(id => id !== casa.id);
+    }
   }
 
   let fim = verificarVencedor();
@@ -425,6 +523,77 @@ app.get("/", (req, res) => {
 
 app.get("/casas", (req, res) => {
   res.json(casas);
+});
+
+function resetGameState() {
+  game.pos = 0;
+  game.playerDinheiro = 1500;
+  game.millaDinheiro = 1500;
+  game.propriedades = [];
+  game.empresasPlayer = [];
+  game.empresasMilla = [];
+  game.empresasEmDebito = [];
+  game.poderesDisponiveis = [];
+  game.emotionalBar = 0;
+  game.affectiveMessages = [];
+  game.historico = [];
+  game.humor = 0;
+  game.millaAutonomia = 0.75;
+  game.turno = "player";
+  game.vencedor = null;
+  casas.forEach(casa => {
+    casa.dono = null;
+  });
+}
+
+app.post("/reset", (req, res) => {
+  resetGameState();
+  res.json({ game, mensagem: "Jogo resetado. Comece novamente!" });
+});
+
+app.post("/start", (req, res) => {
+  resetGameState();
+  res.json({ game, mensagem: "Jogo iniciado." });
+});
+
+app.get("/poderes", (req, res) => {
+  res.json(game.poderesDisponiveis);
+});
+
+app.post("/usar-poder", (req, res) => {
+  if (game.turno !== "player" || game.vencedor) {
+    return res.status(400).json({ error: "Não é a vez do jogador ou o jogo terminou." });
+  }
+
+  let poderNome = req.body.poder;
+  let poder = poderes.find(p => p.nome === poderNome);
+  if (!poder || !game.poderesDisponiveis.find(p => p.nome === poderNome)) {
+    return res.status(400).json({ error: "Poder não disponível." });
+  }
+
+  poder.run("player");
+  game.poderesDisponiveis = []; // Usou, limpa
+
+  let fim = verificarVencedor();
+  if (fim) return res.json({ game, vencedor: game.vencedor, mensagem: fim });
+
+  game.turno = "milla";
+
+  res.json({ game, fala: "Poder usado: " + poderNome, turno: game.turno });
+});
+
+app.post("/enviar-emoji", (req, res) => {
+  let emoji = req.body.emoji;
+  let from = req.body.from; // "player" or "milla"
+  game.affectiveMessages.push({ emoji, from, timestamp: Date.now() });
+  // Milla reacts sometimes
+  if (from === "player" && Math.random() < 0.5) {
+    let reactions = ["💕", "😘", "🥰", "😊", "😏"];
+    let reaction = reactions[Math.floor(Math.random() * reactions.length)];
+    game.affectiveMessages.push({ emoji: reaction, from: "milla", timestamp: Date.now() });
+    game.emotionalBar = Math.min(100, game.emotionalBar + 5);
+  }
+  res.json({ game });
 });
 
 /* ========================= */
